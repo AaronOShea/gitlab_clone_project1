@@ -1,9 +1,14 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'auth/login_screen.dart';
 import 'data/transaction_store.dart';
 import 'app/transaction_provider.dart';
 import 'screens/main_shell.dart';
+import 'services/auth_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const BudgetApp());
 }
 
@@ -12,14 +17,65 @@ class BudgetApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final store = TransactionStore();
-    return TransactionProvider(
-      store: store,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Budget App',
-        theme: ThemeData(primarySwatch: Colors.green),
-        home: const MainShell(),
+    return StreamBuilder(
+      stream: AuthService.instance.authStateChanges,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'AIFC Finance Coach',
+            theme: ThemeData(primarySwatch: Colors.green),
+            home: const _SplashLoading(),
+          );
+        }
+        final user = snapshot.data;
+        if (user == null) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'AIFC Finance Coach',
+            theme: ThemeData(primarySwatch: Colors.green),
+            home: const LoginScreen(),
+          );
+        }
+        final store = TransactionStore();
+        return TransactionProvider(
+          store: store,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'AIFC Finance Coach',
+            theme: ThemeData(primarySwatch: Colors.green),
+            home: const MainShell(),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SplashLoading extends StatelessWidget {
+  const _SplashLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF2E7D32),
+              Color(0xFF1B5E20),
+            ],
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
+        ),
       ),
     );
   }
