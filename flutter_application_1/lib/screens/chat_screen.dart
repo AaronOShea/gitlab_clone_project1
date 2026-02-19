@@ -1,4 +1,12 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import '../app/transaction_provider.dart';
+import '../data/transaction_store.dart';
+import '../models/transaction_model.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -18,6 +26,81 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isLoading = false;
+
+  // Backend URL: Android emulator uses 10.0.2.2 to reach host machine;
+  // iOS simulator and others use localhost. Physical device needs your computer's IP.
+  static String get _backendUrl {
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:8000';
+    }
+    return 'http://localhost:8000';
+  }
+
+  /// Build user context from TransactionStore for personalised AI answers.
+  static Map<String, dynamic>? _buildUserContext(TransactionStore store) {
+    final income = store.incomeThisMonth;
+    final spent = store.spentThisMonth;
+    final budget = store.monthlyBudget;
+    final remaining = store.remainingThisMonth;
+    final spentPct = store.spentPercentageOfIncome;
+    final byCategory = store.spentByCategoryThisMonth;
+    final hasBudget = store.hasBudgetSet;
+
+    final categoryLimits = <String, double>{};
+    for (final cat in expenseCategories) {
+      final limit = store.getCategoryLimit(cat);
+      if (limit != null) categoryLimits[cat] = limit;
+    }
+
+    final recent = store.expensesThisMonth.take(10).map((t) => {
+      'category': t.category,
+      'amount': t.amount,
+      'date': t.date.toIso8601String().substring(0, 10),
+      if (t.note != null && t.note!.isNotEmpty) 'note': t.note,
+    }).toList();
+
+    return {
+      'income_this_month': income,
+      'spent_this_month': spent,
+      'monthly_budget': budget,
+      'remaining_this_month': remaining,
+      'has_budget_set': hasBudget,
+      'spent_percentage_of_income': spentPct,
+      'spent_by_category': byCategory,
+      'category_limits': categoryLimits,
+      'recent_expenses': recent,
+    };
+  }
+
+  Future<String> _fetchAIResponse(String message, Map<String, dynamic>? userContext) async {
+    try {
+      final body = <String, dynamic>{'message': message};
+      if (userContext != null && userContext.isNotEmpty) {
+        body['user_context'] = userContext;
+      }
+      final response = await http.post(
+        Uri.parse('$_backendUrl/api/ai-chat/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['reply'] ?? 'Sorry, I could not generate a response.';
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          final errorMessage = errorData['error'] ?? 'Unknown error occurred';
+          return 'Error: $errorMessage';
+        } catch (_) {
+          return 'Error: ${response.statusCode}. Please try again.';
+        }
+      }
+    } catch (e) {
+      return 'Failed to connect to the AI service. Please check your connection and ensure the backend is running.';
+    }
+  }
 
   @override
   void dispose() {
@@ -102,10 +185,20 @@ class _ChatScreenState extends State<ChatScreen> {
                   controller: _scrollController,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  itemCount: _messages.length,
+                  itemCount: _messages.length + (_isLoading ? 1 : 0),
                   itemBuilder: (context, index) {
-                    final message = _messages[index];
-                    return _ChatBubble(message: message);
+                    if (index < _messages.length) {
+                      final message = _messages[index];
+                      return _ChatBubble(message: message);
+                    } else {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
                   },
                 ),
               ),
@@ -175,7 +268,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _handleSend() {
+  Future<void> _handleSend() async {
     final raw = _controller.text.trim();
     if (raw.isEmpty) return;
 
@@ -186,15 +279,26 @@ class _ChatScreenState extends State<ChatScreen> {
           fromCoach: false,
         ),
       );
-      _messages.add(
-        _ChatMessage(
-          text: _buildCoachReply(raw),
-          fromCoach: true,
-        ),
-      );
+      _isLoading = true;
     });
 
     _controller.clear();
+    _scrollToBottom();
+
+    final store = TransactionProvider.of(context);
+    final userContext = _buildUserContext(store);
+    final reply = await _fetchAIResponse(raw, userContext);
+
+    setState(() {
+      _messages.add(
+        _ChatMessage(
+          text: reply,
+          fromCoach: true,
+        ),
+      );
+      _isLoading = false;
+    });
+
     _scrollToBottom();
   }
 
@@ -209,61 +313,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  String _buildCoachReply(String userMessage) {
-    final lower = userMessage.toLowerCase();
-
-    if (lower.contains('grocer') ||
-        lower.contains('food') ||
-        lower.contains('eating out') ||
-        lower.contains('restaurant')) {
-      return "Food is one of the easiest areas to overspend.\n\n"
-          "• Try setting a simple weekly cap for groceries and eating out.\n"
-          "• Before you shop, write a short list and avoid ‘just browsing’ the aisles.\n"
-          "• If you’d like, we can create a realistic food budget you can actually stick to.";
-    }
-
-    if (lower.contains('rent') || lower.contains('housing') || lower.contains('bills')) {
-      return "Housing and fixed bills take a big chunk of most budgets.\n\n"
-          "Start by listing all your fixed bills (rent, utilities, phone, subscriptions) and compare them to your income.\n"
-          "From there, we can see what’s left for savings and day‑to‑day spending, then look for easy places to trim.";
-    }
-
-    if (lower.contains('debt') ||
-        lower.contains('credit card') ||
-        lower.contains('loan') ||
-        lower.contains('owe')) {
-      return "A simple way to handle debt is the ‘debt snowball’ or ‘debt avalanche’.\n\n"
-          "1) List your debts with balance and interest rate.\n"
-          "2) Pay the minimum on all but one debt.\n"
-          "3) Put any extra money towards the target debt until it’s cleared.\n\n"
-          "Tell me your balances and rates and I can suggest which strategy fits you best.";
-    }
-
-    if (lower.contains('save') ||
-        lower.contains('savings') ||
-        lower.contains('emergency fund') ||
-        lower.contains('goal')) {
-      return "Let’s turn this into a clear savings plan.\n\n"
-          "Think about:\n"
-          "• What you’re saving for\n"
-          "• How much you need\n"
-          "• When you’d like to reach it\n\n"
-          "From there we can break it into a monthly amount that fits your budget.";
-    }
-
-    if (lower.contains('budget') || lower.contains('spend') || lower.contains('spending')) {
-      return "A good budget isn’t about restriction, it’s about clarity.\n\n"
-          "Try a simple 50/30/20 split of your income:\n"
-          "• 50% needs (rent, bills, groceries)\n"
-          "• 30% wants (fun, treats, non‑essentials)\n"
-          "• 20% future you (savings, debt payments above the minimum)\n\n"
-          "We can adjust those percentages to fit your real numbers.";
-    }
-
-    return "Thanks for sharing that.\n\n"
-        "I’m here to help you understand where your money is going and how to make steady progress.\n"
-        "You can ask me about your budget, cutting a specific expense, building savings, or tackling debt.";
-  }
 }
 
 class _ChatMessage {
