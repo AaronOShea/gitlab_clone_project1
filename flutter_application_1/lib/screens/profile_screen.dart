@@ -12,18 +12,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _currency = 'EUR';
   bool _notifications = true;
   String? _displayName;
-  double _defaultMonthlyIncome = 3000;
+  double _defaultMonthlyIncome = 0;
   String _budgetCycleStart = '1st of month';
   int _savingsTargetPercent = 20;
 
   @override
   Widget build(BuildContext context) {
     final user = AuthService.instance.currentUser;
-    final email = user?.email ?? 'Unknown user';
-    final createdAt = user?.metadata.creationTime;
-    final memberSince = _formatMemberSince(createdAt);
+    final email = user?.email ?? 'user@example.com';
+    final createdAt = user?.metadata.creationTime ?? DateTime.now();
+    final displayName = _displayName ?? _deriveDisplayNameFromEmail(email);
     final initials = _initialsFromEmail(email);
-     final displayName = _displayName ?? _deriveDisplayNameFromEmail(email);
+    final memberSince = _formatMemberSince(createdAt);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAF8),
@@ -31,13 +31,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Profile'),
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
-        elevation: 0,
         actions: [
           TextButton.icon(
             onPressed: () => _showEditDisplayNameDialog(context, displayName),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('Edit'),
           ),
@@ -57,167 +54,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
               _StatsRow(
-                currentMonthSavingsPercent: 24,
-                longestStreakMonths: 5,
+                currentMonthSavingsPercent: 0,
+                longestStreakMonths: 0,
                 totalSavedFormatted:
-                    '${_currencyLabel(_currency).split(' ').first} 12,450',
+                    '${_currencyLabel(_currency).split(' ').first} 0',
               ),
               const SizedBox(height: 24),
+
+              // --- Financial Preferences ---
               Text(
-                'Financial preferences',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
+                'Financial Preferences',
+                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
               ),
               const SizedBox(height: 10),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.currency_exchange_rounded),
-                        title: const Text('Currency'),
-                        subtitle: Text(
-                          _currencyLabel(_currency),
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                        trailing: DropdownButton<String>(
-                          value: _currency,
-                          underline: const SizedBox.shrink(),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'USD',
-                              child: Text('USD'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'EUR',
-                              child: Text('EUR'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'GBP',
-                              child: Text('GBP'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _currency = value;
-                            });
-                          },
-                        ),
-                      ),
-                      const Divider(height: 0),
-                      ListTile(
-                        leading: const Icon(Icons.payments_rounded),
-                        title: const Text('Default monthly income'),
-                        subtitle: Text(
-                          '${_currencyLabel(_currency).split(' ').first} ${_defaultMonthlyIncome.toStringAsFixed(0)}',
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                        trailing: TextButton(
-                          onPressed: () =>
-                              _showEditIncomeDialog(context, _defaultMonthlyIncome),
-                          child: const Text('Edit'),
-                        ),
-                      ),
-                      const Divider(height: 0),
-                      ListTile(
-                        leading: const Icon(Icons.calendar_month_rounded),
-                        title: const Text('First day of budget cycle'),
-                        subtitle: Text(
-                          _budgetCycleStart,
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                        trailing: DropdownButton<String>(
-                          value: _budgetCycleStart,
-                          underline: const SizedBox.shrink(),
-                          items: const [
-                            DropdownMenuItem(
-                              value: '1st of month',
-                              child: Text('1st of month'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Custom start date',
-                              child: Text('Custom start date'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _budgetCycleStart = value;
-                            });
-                          },
-                        ),
-                      ),
-                      const Divider(height: 0),
-                      ListTile(
-                        leading: const Icon(Icons.savings_rounded),
-                        title: const Text('Savings target percentage'),
-                        subtitle: Text(
-                          '$_savingsTargetPercent%',
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                        trailing: DropdownButton<int>(
-                          value: _savingsTargetPercent,
-                          underline: const SizedBox.shrink(),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 10,
-                              child: Text('10%'),
-                            ),
-                            DropdownMenuItem(
-                              value: 15,
-                              child: Text('15%'),
-                            ),
-                            DropdownMenuItem(
-                              value: 20,
-                              child: Text('20%'),
-                            ),
-                            DropdownMenuItem(
-                              value: 25,
-                              child: Text('25%'),
-                            ),
-                            DropdownMenuItem(
-                              value: 30,
-                              child: Text('30%'),
-                            ),
-                            DropdownMenuItem(
-                              value: 40,
-                              child: Text('40%'),
-                            ),
-                            DropdownMenuItem(
-                              value: 50,
-                              child: Text('50%'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _savingsTargetPercent = value;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _FinancialPreferencesCard(
+                currency: _currency,
+                onCurrencyChanged: (val) =>
+                    setState(() => _currency = val ?? _currency),
+                monthlyIncome: _defaultMonthlyIncome,
+                onEditIncome: () => _showEditIncomeDialog(
+                    context, _defaultMonthlyIncome),
+                budgetCycleStart: _budgetCycleStart,
+                onCycleChanged: (val) =>
+                    setState(() => _budgetCycleStart = val ?? _budgetCycleStart),
+                savingsTargetPercent: _savingsTargetPercent,
+                onSavingsChanged: (val) =>
+                    setState(() => _savingsTargetPercent = val ?? _savingsTargetPercent),
               ),
+
               const SizedBox(height: 24),
+
+              // --- App Settings ---
               Text(
-                'Data & Privacy',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
+                'App Settings',
+                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
               ),
               const SizedBox(height: 10),
               Card(
@@ -228,104 +104,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.shield_rounded),
-                      title: const Text('View data policy'),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        // TODO: Navigate to data policy screen or open link.
-                      },
+                    SwitchListTile(
+                      secondary: const Icon(Icons.notifications_rounded),
+                      title: const Text('Notifications'),
+                      value: _notifications,
+                      onChanged: (value) =>
+                          setState(() => _notifications = value),
                     ),
                     const Divider(height: 0),
-                    ListTile(
-                      leading: const Icon(Icons.download_rounded),
-                      title: const Text('Download my data'),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        // TODO: Trigger data export flow.
-                      },
-                    ),
-                    const Divider(height: 0),
-                    ListTile(
-                      leading: const Icon(Icons.lock_outline_rounded),
-                      title: const Text('AI uses anonymised data only'),
-                      subtitle: Text(
-                        'Aligned with GDPR and privacy-by-design.',
-                        style: TextStyle(color: Colors.grey.shade700),
-                      ),
-                    ),
-                    const Divider(height: 0),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.delete_forever_rounded,
-                        color: Color(0xFFB71C1C),
-                      ),
-                      title: const Text(
-                        'Delete account',
-                        style: TextStyle(
-                          color: Color(0xFFB71C1C),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      onTap: () => _confirmDeleteAccount(context),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'App settings',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        secondary: const Icon(Icons.notifications_rounded),
-                        title: const Text('Notifications'),
-                        value: _notifications,
-                        onChanged: (value) {
-                          setState(() {
-                            _notifications = value;
-                          });
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await AuthService.instance.signOut();
                         },
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            await AuthService.instance.signOut();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFB71C1C),
-                            side: const BorderSide(color: Color(0xFFB71C1C)),
-                            minimumSize: const Size.fromHeight(44),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          icon: const Icon(Icons.logout_rounded),
-                          label: const Text('Logout'),
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('Logout'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFB71C1C),
+                          side: const BorderSide(color: Color(0xFFB71C1C)),
+                          minimumSize: const Size.fromHeight(44),
                         ),
                       ),
-                    ],
-                  ),
+                    )
+                  ],
                 ),
               ),
             ],
@@ -335,38 +137,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  String _formatMemberSince(DateTime? createdAt) {
-    if (createdAt == null) return 'Member since Feb 2026';
+  /// Utility methods
+
+  String _formatMemberSince(DateTime? date) {
+    if (date == null) return 'Member since unknown';
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    final monthName = months[createdAt.month - 1];
-    return 'Member since $monthName ${createdAt.year}';
+    return 'Member since ${months[date.month - 1]} ${date.year}';
+  }
+
+  String _deriveDisplayNameFromEmail(String email) {
+    final prefix = email.split('@').first;
+    return prefix.isEmpty ? 'User' : prefix.split('.').map(_capitalize).join(' ');
   }
 
   String _initialsFromEmail(String email) {
     final prefix = email.split('@').first;
     if (prefix.isEmpty) return '?';
     final parts = prefix.split('.');
-    if (parts.length >= 2) {
-      final first = parts[0].isNotEmpty ? parts[0][0] : '';
-      final second = parts[1].isNotEmpty ? parts[1][0] : '';
-      final combined = '$first$second'.trim();
-      return combined.isEmpty ? prefix[0].toUpperCase() : combined.toUpperCase();
-    }
-    return prefix[0].toUpperCase();
+    return parts.length >= 2
+        ? '${parts.first[0].toUpperCase()}${parts[1][0].toUpperCase()}'
+        : prefix.substring(0, 1).toUpperCase();
   }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   String _currencyLabel(String code) {
     switch (code) {
@@ -381,150 +178,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  String _deriveDisplayNameFromEmail(String email) {
-    final prefix = email.split('@').first;
-    if (prefix.isEmpty) return 'Your profile';
-    final parts = prefix.split('.');
-    if (parts.length >= 2) {
-      final first = parts[0];
-      final second = parts[1];
-      return '${_capitalise(first)} ${_capitalise(second)}';
-    }
-    return _capitalise(prefix);
-  }
-
-  String _capitalise(String value) {
-    if (value.isEmpty) return value;
-    if (value.length == 1) return value.toUpperCase();
-    return value[0].toUpperCase() + value.substring(1);
-  }
-
-  Future<void> _showEditDisplayNameDialog(
-    BuildContext context,
-    String currentName,
-  ) async {
-    final controller = TextEditingController(text: currentName);
-    final result = await showDialog<String>(
+  Future<void> _showEditDisplayNameDialog(BuildContext context, String name) async {
+    final ctrl = TextEditingController(text: name);
+    final newName = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Edit display name'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Display name',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(controller.text.trim());
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: const Text('Edit display name'),
+        content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Display name')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, ctrl.text.trim()), child: const Text('Save')),
+        ],
+      ),
     );
-
-    if (result != null && result.isNotEmpty) {
-      setState(() {
-        _displayName = result;
-      });
-    }
+    if (newName != null && newName.isNotEmpty) setState(() => _displayName = newName);
   }
 
-  Future<void> _showEditIncomeDialog(
-    BuildContext context,
-    double currentIncome,
-  ) async {
-    final controller =
-        TextEditingController(text: currentIncome.toStringAsFixed(0));
-    final result = await showDialog<double>(
+  Future<void> _showEditIncomeDialog(BuildContext context, double income) async {
+    final ctrl = TextEditingController(text: income.toStringAsFixed(0));
+    final val = await showDialog<double>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Default monthly income'),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Amount',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final text = controller.text.replaceAll(',', '').trim();
-                final value = double.tryParse(text);
-                Navigator.of(context).pop(value);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (result != null && result > 0) {
-      setState(() {
-        _defaultMonthlyIncome = result;
-      });
-    }
-  }
-
-  Future<void> _confirmDeleteAccount(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete account'),
-          content: const Text(
-            'This will permanently delete your account and associated data. '
-            'This action cannot be undone.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFB71C1C),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await AuthService.instance.deleteAccount();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Unable to delete account. Please re-authenticate and try again.',
-          ),
+      builder: (_) => AlertDialog(
+        title: const Text('Default monthly income'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Amount'),
         ),
-      );
-    }
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, double.tryParse(ctrl.text.trim())),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (val != null && val > 0) setState(() => _defaultMonthlyIncome = val);
   }
 }
+
+/// CARD SECTIONS
 
 class _ProfileHeaderCard extends StatelessWidget {
   final String displayName;
@@ -542,7 +236,6 @@ class _ProfileHeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade200),
@@ -568,33 +261,17 @@ class _ProfileHeaderCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displayName,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(displayName,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      )),
                   const SizedBox(height: 2),
-                  Text(
-                    email,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(email,
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
                   const SizedBox(height: 4),
-                  Text(
-                    memberSince,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
+                  Text(memberSince,
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
                 ],
               ),
             ),
@@ -622,7 +299,7 @@ class _StatsRow extends StatelessWidget {
       children: [
         Expanded(
           child: _StatCard(
-            label: 'Current month savings',
+            label: 'Monthly Savings',
             value: '$currentMonthSavingsPercent%',
             color: const Color(0xFF2E7D32),
           ),
@@ -630,7 +307,7 @@ class _StatsRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _StatCard(
-            label: 'Longest streak',
+            label: 'Longest Streak',
             value: '${longestStreakMonths} mo',
             color: const Color(0xFFAF52DE),
           ),
@@ -638,7 +315,7 @@ class _StatsRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _StatCard(
-            label: 'Total saved',
+            label: 'Total Saved',
             value: totalSavedFormatted,
             color: const Color(0xFF1B5E20),
           ),
@@ -662,35 +339,112 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Column(
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade600,
-              ),
-            ),
+            Text(label,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
             const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: color)),
           ],
         ),
       ),
     );
   }
 }
+
+class _FinancialPreferencesCard extends StatelessWidget {
+  final String currency;
+  final ValueChanged<String?> onCurrencyChanged;
+  final double monthlyIncome;
+  final VoidCallback onEditIncome;
+  final String budgetCycleStart;
+  final ValueChanged<String?> onCycleChanged;
+  final int savingsTargetPercent;
+  final ValueChanged<int?> onSavingsChanged;
+
+  const _FinancialPreferencesCard({
+    required this.currency,
+    required this.onCurrencyChanged,
+    required this.monthlyIncome,
+    required this.onEditIncome,
+    required this.budgetCycleStart,
+    required this.onCycleChanged,
+    required this.savingsTargetPercent,
+    required this.onSavingsChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.currency_exchange_rounded),
+            title: const Text('Currency'),
+            subtitle: Text(currency),
+            trailing: DropdownButton<String>(
+              value: currency,
+              underline: const SizedBox(),
+              items: const [
+                DropdownMenuItem(value: 'USD', child: Text('USD')),
+                DropdownMenuItem(value: 'EUR', child: Text('EUR')),
+                DropdownMenuItem(value: 'GBP', child: Text('GBP')),
+              ],
+              onChanged: onCurrencyChanged,
+            ),
+          ),
+          const Divider(height: 0),
+          ListTile(
+            leading: const Icon(Icons.payments_rounded),
+            title: const Text('Default monthly income'),
+            subtitle: Text('\$${monthlyIncome.toStringAsFixed(0)}'),
+            trailing:
+                TextButton(onPressed: onEditIncome, child: const Text('Edit')),
+          ),
+          const Divider(height: 0),
+          ListTile(
+            leading: const Icon(Icons.calendar_month_rounded),
+            title: const Text('Budget cycle start'),
+            subtitle: Text(budgetCycleStart),
+            trailing: DropdownButton<String>(
+              value: budgetCycleStart,
+              underline: const SizedBox(),
+              items: const [
+                DropdownMenuItem(value: '1st of month', child: Text('1st of month')),
+                DropdownMenuItem(value: 'Custom start date', child: Text('Custom start date')),
+              ],
+              onChanged: onCycleChanged,
+            ),
+          ),
+          const Divider(height: 0),
+          ListTile(
+            leading: const Icon(Icons.savings_rounded),
+            title: const Text('Savings target'),
+            subtitle: Text('$savingsTargetPercent%'),
+            trailing: DropdownButton<int>(
+              value: savingsTargetPercent,
+              underline: const SizedBox(),
+              items: const [10, 15, 20, 25, 30, 40, 50]
+                  .map((p) => DropdownMenuItem(value: p, child: Text('$p%')))
+                  .toList(),
+              onChanged: onSavingsChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
